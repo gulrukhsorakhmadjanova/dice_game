@@ -33,4 +33,4 @@ Minimum 3 dice required
 
 Each die: comma-separated integers
 
-Example valid input: 1,2,3 4,5,6 7,8,9
+Example valid input: 1,2,3 4,5,6 7,8,9,2,1,2 1,2,3,4,5,6
