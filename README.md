@@ -12,6 +12,7 @@ A JavaScript implementation of a non-transitive dice game where dice relationshi
 git clone https://github.com/yourusername/non-transitive-dice-game.git
 cd non-transitive-dice-game
 npm install
+npm install table
 
 🎮 How to Play
 Run with 3+ dice configurations (comma-separated integers):
