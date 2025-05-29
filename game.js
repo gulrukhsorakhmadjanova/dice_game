@@ -78,11 +78,12 @@ class FairRandomProtocol {
     };
   }
 
- generateSecureNumber() {
+  generateSecureNumber() {
     const range = this.max - this.min + 1;
     const randomBytes = crypto.randomBytes(4).readUInt32BE(0);
     return this.min + (randomBytes % range);
-}
+  }
+} 
 
 class ProbabilityCalculator {
   static calculate(dice) {
@@ -90,17 +91,17 @@ class ProbabilityCalculator {
     for (let i = 0; i < dice.length; i++) {
       for (let j = 0; j < dice.length; j++) {
         if (i === j) continue;
-        
+
         let wins = 0;
         let total = 0;
-        
+
         for (const val1 of dice[i].values) {
           for (const val2 of dice[j].values) {
             if (val1 > val2) wins++;
             total++;
           }
         }
-        
+
         probabilities[`${i},${j}`] = wins / total;
       }
     }
@@ -138,7 +139,7 @@ class DiceGame {
   async determineFirstPlayer() {
     const protocol = new FairRandomProtocol(0, 1);
     const hmac = protocol.getHmac();
-    
+
     console.log(`I selected a random value in the range 0..1 (HMAC=${hmac}).`);
     console.log("Try to guess my selection.");
     console.log("0 - 0");
@@ -171,7 +172,7 @@ class DiceGame {
 
     await this.performRolls();
     this.compareResults();
-    
+
     const playAgain = await this.getInput("\nPlay another round? (y/n): ");
     if (playAgain.toLowerCase() === 'y') {
       this.selectedDice = {};
@@ -182,17 +183,17 @@ class DiceGame {
   async computerSelectDice() {
     const available = this.getAvailableDice();
     const opponentDie = this.selectedDice.user;
-    
+
     let bestDie = available[0];
-    let bestProb = opponentDie !== undefined 
-      ? this.probabilities[`${bestDie},${opponentDie}`] || 0 
+    let bestProb = opponentDie !== undefined
+      ? this.probabilities[`${bestDie},${opponentDie}`] || 0
       : 0.5;
-    
+
     for (const die of available.slice(1)) {
-      const prob = opponentDie !== undefined 
-        ? this.probabilities[`${die},${opponentDie}`] || 0 
+      const prob = opponentDie !== undefined
+        ? this.probabilities[`${die},${opponentDie}`] || 0
         : 0.5;
-      
+
       if (prob > bestProb) {
         bestProb = prob;
         bestDie = die;
@@ -205,7 +206,7 @@ class DiceGame {
 
   async userSelectDice() {
     const available = this.getAvailableDice();
-    
+
     console.log("Choose your dice:");
     available.forEach((dieIdx, i) => {
       console.log(`${i} - ${this.dice[dieIdx].toString()}`);
@@ -239,7 +240,7 @@ class DiceGame {
     const die = this.dice[dieIdx];
     const protocol = new FairRandomProtocol(0, die.size - 1);
     const hmac = protocol.getHmac();
-    
+
     console.log(`It's time for ${player === 'user' ? 'your' : 'my'} roll.`);
     console.log(`I selected a random value in the range 0..${die.size - 1} (HMAC=${hmac}).`);
     console.log(`Add your number modulo ${die.size}.`);
@@ -258,7 +259,7 @@ class DiceGame {
     const rollResult = (result + parseInt(choice, 10)) % die.size;
     console.log(`My number is ${result} (KEY=${key}).`);
     console.log(`The fair number generation result is ${result} + ${choice} = ${rollResult} (mod ${die.size}).`);
-    
+
     const faceValue = die.roll(rollResult);
     console.log(`${player === 'user' ? 'Your' : 'My'} roll result is ${faceValue}.`);
     return faceValue;
@@ -273,14 +274,13 @@ class DiceGame {
       console.log(`It's a tie (${this.userRoll} = ${this.computerRoll})!`);
     }
   }
-  
 
   async showHelp() {
     const tableData = [
-      ['Dice'].concat(this.dice.map((_, i) => `Die ${i+1}`)),
+      ['Dice'].concat(this.dice.map((_, i) => `Die ${i + 1}`)),
       ...this.dice.map((_, i) => [
-        `Die ${i+1}`,
-        ...this.dice.map((_, j) => 
+        `Die ${i + 1}`,
+        ...this.dice.map((_, j) =>
           i === j ? '-' : this.probabilities[`${i},${j}`].toFixed(4)
         )
       ])
@@ -288,55 +288,46 @@ class DiceGame {
 
     console.log("\nProbability of the win for the user:");
     console.log(table(tableData));
-    console.log("\nGame rules:");
-    console.log("- Each roll uses cryptographically secure random number generation");
-    console.log("- HMAC proves the computer didn't change its number after your choice");
-    console.log("- The first player is chosen by guessing a random number");
-    console.log("- Players alternate selecting different dice");
-    console.log("- Higher roll wins the round");
-  }
-
-  getAvailableDice() {
-    return this.dice.map((_, i) => i)
-      .filter(i => !Object.values(this.selectedDice).includes(i));
+    console.log("\nGame rules:\n- Each player picks one die.\n- Both roll their dice.\n- Higher roll wins the round.");
   }
 
   getInput(prompt) {
-    return new Promise(resolve => this.rl.question(prompt, resolve));
+    return new Promise(resolve => {
+      this.rl.question(prompt, answer => resolve(answer));
+    });
+  }
+
+  getAvailableDice() {
+    const all = Array.from({ length: this.dice.length }, (_, i) => i);
+    const used = Object.values(this.selectedDice);
+    return all.filter(i => !used.includes(i));
   }
 }
 
-// ==================== Main Execution ====================
-function parseDiceArgs(args) {
-  if (args.length < 3) throw ValidationError.NotEnoughDice;
+// ==================== Entry Point ====================
+function parseDiceInput(input) {
+  const parts = input.trim().split(/\s+/);
+  if (parts.length < 3) throw ValidationError.NotEnoughDice;
 
-  return args.map(diceStr => {
-    try {
-      const values = diceStr.split(',').map(x => {
-        const num = parseInt(x.trim(), 10);
-        if (isNaN(num)) throw ValidationError.NonIntegerFace;
-        return num;
-      });
-      if (values.length < 1) throw ValidationError.InvalidDieFormat;
-      return values;
-    } catch (error) {
-      if (error instanceof ValidationError) throw error;
-      throw ValidationError.InvalidDieFormat;
-    }
+  const diceConfigs = parts.map(part => {
+    const faces = part.split(',').map(x => {
+      if (!/^\d+$/.test(x)) throw ValidationError.NonIntegerFace;
+      return parseInt(x, 10);
+    });
+    if (faces.length === 0) throw ValidationError.InvalidDieFormat;
+    return faces;
   });
+
+  return diceConfigs;
 }
 
-(async () => {
-  try {
-    const diceConfigs = parseDiceArgs(process.argv.slice(2));
-    const game = new DiceGame(diceConfigs);
-    await game.start();
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      console.error(error.toString());
-      process.exit(1);
-    }
-    console.error('Unexpected error:', error);
-    process.exit(1);
-  }
-})();
+// Accept input from command line arguments
+try {
+  const args = process.argv.slice(2).join(' ');
+  const diceConfigs = parseDiceInput(args);
+  const game = new DiceGame(diceConfigs);
+  game.start();
+} catch (err) {
+  console.error(err.toString?.() || err);
+  process.exit(1);
+}
