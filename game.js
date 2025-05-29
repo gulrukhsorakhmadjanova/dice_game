@@ -79,11 +79,9 @@ class FairRandomProtocol {
   }
 
   generateSecureNumber() {
-    const range = this.max - this.min + 1;
-    const randomBytes = crypto.randomBytes(4).readUInt32BE(0);
-    return this.min + (randomBytes % range);
+    return crypto.randomInt(this.min, this.max + 1);
   }
-} 
+}
 
 class ProbabilityCalculator {
   static calculate(dice) {
@@ -291,40 +289,33 @@ class DiceGame {
     console.log("\nGame rules:\n- Each player picks one die.\n- Both roll their dice.\n- Higher roll wins the round.");
   }
 
+  getAvailableDice() {
+    const taken = Object.values(this.selectedDice);
+    return this.dice.map((_, idx) => idx).filter(idx => !taken.includes(idx));
+  }
+
   getInput(prompt) {
     return new Promise(resolve => {
       this.rl.question(prompt, answer => resolve(answer));
     });
   }
-
-  getAvailableDice() {
-    const all = Array.from({ length: this.dice.length }, (_, i) => i);
-    const used = Object.values(this.selectedDice);
-    return all.filter(i => !used.includes(i));
-  }
 }
 
-// ==================== Entry Point ====================
-function parseDiceInput(input) {
-  const parts = input.trim().split(/\s+/);
-  if (parts.length < 3) throw ValidationError.NotEnoughDice;
-
-  const diceConfigs = parts.map(part => {
-    const faces = part.split(',').map(x => {
-      if (!/^\d+$/.test(x)) throw ValidationError.NonIntegerFace;
-      return parseInt(x, 10);
-    });
-    if (faces.length === 0) throw ValidationError.InvalidDieFormat;
-    return faces;
+// ==================== Start Game ====================
+function parseDiceArgs(args) {
+  if (args.length < 3) throw ValidationError.NotEnoughDice;
+  const dice = args.map(arg => {
+    const faces = arg.split(',');
+    if (faces.some(f => isNaN(f) || !Number.isInteger(+f))) throw ValidationError.NonIntegerFace;
+    return faces.map(Number);
   });
-
-  return diceConfigs;
+  return dice;
 }
 
-// Accept input from command line arguments
+const args = process.argv.slice(2);
+
 try {
-  const args = process.argv.slice(2).join(' ');
-  const diceConfigs = parseDiceInput(args);
+  const diceConfigs = parseDiceArgs(args);
   const game = new DiceGame(diceConfigs);
   game.start();
 } catch (err) {
