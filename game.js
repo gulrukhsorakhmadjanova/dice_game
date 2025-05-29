@@ -272,8 +272,15 @@ class DiceGame {
   }
 
   compareResults() {
-    console.log(`You ${this.userRoll > this.computerRoll ? 'win' : 'lose'} (${this.userRoll} > ${this.computerRoll})!`);
+    if (this.userRoll > this.computerRoll) {
+      console.log(`You win (${this.userRoll} > ${this.computerRoll})!`);
+    } else if (this.userRoll < this.computerRoll) {
+      console.log(`You lose (${this.userRoll} < ${this.computerRoll})!`);
+    } else {
+      console.log(`It's a tie (${this.userRoll} = ${this.computerRoll})!`);
+    }
   }
+  
 
   async showHelp() {
     const tableData = [
