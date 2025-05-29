@@ -78,17 +78,10 @@ class FairRandomProtocol {
     };
   }
 
-  generateSecureNumber() {
-    const max = 0xFFFFFFFFFFFFF;
-    const limit = max - (max % this.range);
-    
-    let randomValue;
-    do {
-      randomValue = crypto.randomBytes(6).readUIntBE(0, 6) >>> 0;
-    } while (randomValue >= limit);
-    
-    return this.min + (randomValue % this.range);
-  }
+ generateSecureNumber() {
+    const range = this.max - this.min + 1;
+    const randomBytes = crypto.randomBytes(4).readUInt32BE(0);
+    return this.min + (randomBytes % range);
 }
 
 class ProbabilityCalculator {
